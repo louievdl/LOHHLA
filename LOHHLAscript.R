@@ -42,7 +42,7 @@ option_list = list(
               help="remove temporary files [default= %default]", metavar="character"),
   make_option(c("-d", "--novoDir"), type="character", default='', 
               help="path to novoalign executable [default= %default]", metavar="character"),
-  make_option(c("-g" "--gatkDir"), type="character", default='', 
+  make_option(c("-g", "--gatkDir"), type="character", default='', 
               help="path to GATK executable [default= %default]", metavar="character"),
   make_option(c("-e", "--HLAexonLoc"), type="character", default='~/lohhla/data/hla.dat', 
               help="HLA exon boundaries for plotting [default= %default]", metavar="character"),
