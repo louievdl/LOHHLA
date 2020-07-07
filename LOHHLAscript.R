@@ -16,7 +16,7 @@ option_list = list(
               help="normal BAM file\n\t\tcan be FALSE to run without normal sample", metavar="character"),
   make_option(c("-b", "--BAMDir"), type="character", default=NULL, 
               help="location of all BAMs to test", metavar="character"),
-  make_option(c("-h", "--hlaPath"), type="character", default=NULL, 
+  make_option(c("-a", "--hlaPath"), type="character", default=NULL, 
               help="location to patient HLA calls", metavar="character"),
   make_option(c("-l", "--HLAfastaLoc"), type="character", default='~/lohhla/data/hla_all.fasta', 
               help="location of HLA FASTA [default= %default]", metavar="character"),
