@@ -8,7 +8,7 @@
 
 library(optparse)
 option_list = list(
-  make_option(c("-id", "--patientId"), type="character", default=NULL, 
+  make_option(c("-i", "--patientId"), type="character", default=NULL, 
               help="patient ID", metavar="character"),
   make_option(c("-o", "--outputDir"), type="character", default=NULL, 
               help="location of output directory", metavar="character"),
