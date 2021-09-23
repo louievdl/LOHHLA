@@ -517,7 +517,7 @@ if(length(BAMfiles)<2)
   stop(paste('Cannot find 2 bam files within ',BAMDir))
 }
 
-regions   <- sapply(BAMfiles, FUN =function(x) {return(unlist(strsplit(x, split = '.bam'))[1])})
+regions   <- sapply(BAMfiles, FUN =function(x) {return(unlist(strsplit(x, split = "\\.bam$"))[1])})
 
 hlaAlleles <- read.table(hlaPath, sep = '\t', header = FALSE, as.is = TRUE)
 if(ncol(hlaAlleles) == 3){
@@ -585,7 +585,7 @@ if(mapping.step){
 
   for(BAMfile in BAMfiles){
     
-    BAMid <- unlist(strsplit(BAMfile, split = '.bam'))[1]
+    BAMid <- unlist(strsplit(BAMfile, split = '.bam$'))[1]
     
     if(paste(BAMDir, '/', BAMfile, sep = '') == normalBAMfile){
       normalName <- BAMid
