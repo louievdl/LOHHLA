@@ -48,8 +48,8 @@ option_list = list(
               help="are coverage differences analyzed [default= %default]", metavar="character"),
   make_option(c("--cleanUp"), type="logical", default=TRUE, 
               help="remove temporary files [default= %default]", metavar="character"),
-  make_option(c("-d", "--novoDir"), type="character", default='', 
-              help="path to novoalign executable [default= %default]", metavar="character"),
+#  make_option(c("-d", "--novoDir"), type="character", default='', 
+#              help="path to novoalign executable [default= %default]", metavar="character"),
   make_option(c("-g", "--gatkDir"), type="character", default='', 
               help="path to GATK executable [default= %default]", metavar="character"),
   make_option(c("-e", "--HLAexonLoc"), type="character", default='~/lohhla/data/hla.dat', 
@@ -89,7 +89,7 @@ minCoverageFilter <- opt$minCoverageFilter
 numMisMatch       <- opt$numMisMatch
 mapping.step      <- opt$mappingStep
 cleanUp           <- opt$cleanUp
-NOVODir           <- opt$novoDir
+#NOVODir           <- opt$novoDir
 GATKDir           <- opt$gatkDir
 HLAexonLoc        <- opt$HLAexonLoc
 kmerSize          <- opt$kmerSize
@@ -161,7 +161,7 @@ if(interactive)
                                , '--cleanUp', 'TRUE'
                                #, '--overrideDir', '/camp/lab/swantonc/working/mcgrann/projects/LOHproject/kidney_run/G_K107/flagstat/'
                                , '--gatkDir', '/camp/apps/eb/software/TracerX-Picard-GATK/0.1-Java-1.7.0_80/bin/'
-                               , '--novoDir', '/camp/apps/eb/software/novoalign/3.07.00/bin/'))
+                               #, '--novoDir', '/camp/apps/eb/software/novoalign/3.07.00/bin/'))
 
   opt<-parse_args(opt_parser,c('--patientId', 'G_K107'
                                , '--outputDir', '/camp/lab/swantonc/working/rosentr/projects/PolySolverLOH/test/test-renal/G_K107-v2/'
@@ -174,7 +174,7 @@ if(interactive)
                                , '--cleanUp', 'TRUE'
                                #, '--overrideDir', '/camp/lab/swantonc/working/rosentr/projects/PolySolverLOH/test/test-renal/G_K107-v2/flagstat/'
                                , '--gatkDir', '/camp/apps/eb/software/TracerX-Picard-GATK/0.1-Java-1.7.0_80/bin/'
-                               , '--novoDir', '/camp/apps/eb/software/novoalign/3.07.00/bin/'))
+                               #, '--novoDir', '/camp/apps/eb/software/novoalign/3.07.00/bin/'))
   
 }
 
@@ -278,7 +278,7 @@ get.partially.matching.reads <- function(workDir, regionDir, BAMDir, BAMfile){
   system(cmd)
 
   # convert to fastq
-  cmd <- paste('java -jar ', GATKDir, '/SamToFastq.jar I=', regionDir, '/fished.sam F=', regionDir, '/fished.1.fastq F2=', regionDir, '/fished.2.fastq VALIDATION_STRINGENCY=SILENT', sep = '')
+  cmd <- paste(ifelse(dir.exists(GATKDir), paste0('java -jar ', GATKDir, '/SamToFastq.jar'), 'picard SamToFastq'), ' I=', regionDir, '/fished.sam F=', regionDir, '/fished.1.fastq F2=', regionDir, '/fished.2.fastq VALIDATION_STRINGENCY=SILENT', sep = '')
   system(cmd)
 
 }
@@ -523,8 +523,8 @@ if(!dir.exists(figureDir))
   dir.create(figureDir,recursive=TRUE)
 }
 
-params <- list(full.patient, workDir, hlaPath, normalBAMfile, BAMDir, HLAfastaLoc, CopyNumLoc, GATKDir, NOVODir)
-names(params) <- c('full.patient', 'workDir', 'hlaPath', 'normalBAMfile', 'BAMDir', 'HLAfastaLoc', 'CopyNumLoc', 'GATKDir', 'NOVODir')
+params <- list(full.patient, workDir, hlaPath, normalBAMfile, BAMDir, HLAfastaLoc, CopyNumLoc, GATKDir)
+names(params) <- c('full.patient', 'workDir', 'hlaPath', 'normalBAMfile', 'BAMDir', 'HLAfastaLoc', 'CopyNumLoc', 'GATKDir')
 document.params(params, log.name)
 
 
@@ -683,7 +683,7 @@ if(mapping.step){
     
     # turn into fastq -- this step has an error with unpaired mates, but seems to work ok just the same (VALIDATION_STRINGENCY=SILENT)
     write.table(paste('\nturn into fastq at ', date(), '\n', sep = ''), file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
-    samToFastQ <- paste("java -jar ",GATKDir,"/SamToFastq.jar ","I=",regionDir,"/",BAMid,".chr6region.sam"," F=",regionDir,"/",BAMid,".chr6region.1.fastq"," F2=",regionDir,"/",BAMid,".chr6region.2.fastq"," VALIDATION_STRINGENCY=SILENT",sep="")
+    samToFastQ <- paste(ifelse(dir.exists(GATKDir), paste0("java -jar ",GATKDir,"/SamToFastq.jar"), 'picard SamToFastq')," I=",regionDir,"/",BAMid,".chr6region.sam"," F=",regionDir,"/",BAMid,".chr6region.1.fastq"," F2=",regionDir,"/",BAMid,".chr6region.2.fastq"," VALIDATION_STRINGENCY=SILENT",sep="")
     write.table(samToFastQ, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
     system(samToFastQ)
 
@@ -703,7 +703,7 @@ if(mapping.step){
     # align to all HLA alleles
     write.table(paste('\nalign to all HLA alleles at ', date(), '\n', sep = ''), file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)  
     
-    alignCMD <- paste(NOVODir, '/novoalign -d ', workDir, '/', full.patient, '.patient.hlaFasta.nix', ' -f ', regionDir,"/",BAMid,".chr6region.1.fastq", ' ', regionDir,"/",BAMid,".chr6region.2.fastq", ' -F STDFQ -R 0 -r All 9999 -o SAM -o FullNW 1> ', regionDir, '/', BAMid, '.chr6region.patient.reference.hlas.sam ', '2> ', regionDir, '/', BAMid, '_BS_GL.chr6region.patient.reference.hlas.metrics', sep = '')
+    alignCMD <- paste('novoalign -d ', workDir, '/', full.patient, '.patient.hlaFasta.nix', ' -f ', regionDir,"/",BAMid,".chr6region.1.fastq", ' ', regionDir,"/",BAMid,".chr6region.2.fastq", ' -F STDFQ -R 0 -r All 9999 -o SAM -o FullNW 1> ', regionDir, '/', BAMid, '.chr6region.patient.reference.hlas.sam ', '2> ', regionDir, '/', BAMid, '_BS_GL.chr6region.patient.reference.hlas.metrics', sep = '')
     write.table(alignCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
     system(alignCMD)
 
@@ -712,7 +712,7 @@ if(mapping.step){
     system(convertToBam)
     
     # sort
-    sortBAM <- paste("java -jar ",GATKDir,"/SortSam.jar"," I=",regionDir, '/', BAMid, '.chr6region.patient.reference.hlas.bam'," ","O=",regionDir,"/",BAMid,".chr6region.patient.reference.hlas.csorted.bam", " SORT_ORDER=coordinate",sep="")
+    sortBAM <- paste(ifelse(dir.exists(GATKDir), paste0("java -jar ",GATKDir,"/SortSam.jar"), 'picard SortSam')," I=",regionDir, '/', BAMid, '.chr6region.patient.reference.hlas.bam'," ","O=",regionDir,"/",BAMid,".chr6region.patient.reference.hlas.csorted.bam", " SORT_ORDER=coordinate",sep="")
     write.table(sortBAM, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
     system(sortBAM)
     
@@ -753,7 +753,7 @@ if(mapping.step){
       # and filter out reads that have too many events -- has to be done here because some reads map to multiple alleles
       passed.reads <- count.events(paste(regionDir, '/', BAMid, '.type.', allele, '.bam', sep = ''), n = numMisMatch)
       write.table(passed.reads, file = paste(regionDir, '/', BAMid, '.', allele, '.passed.reads.txt', sep = ''), sep = '\t', quote = FALSE, row.names = FALSE, col.names = FALSE)
-      extractCMD <- paste("java -jar ",GATKDir,"/FilterSamReads.jar ", "I=",  regionDir, '/', BAMid, '.type.', allele, '.bam' , " FILTER=includeReadList READ_LIST_FILE=", regionDir, "/", BAMid, '.', allele, ".passed.reads.txt", ' OUTPUT=', regionDir, '/', BAMid, '.type.', allele, '.filtered.bam', sep = '')
+      extractCMD <- paste(ifelse(dir.exists(GATKDir), paste0("java -jar ",GATKDir,"/FilterSamReads.jar"), 'picard FilterSamReads'), " I=",  regionDir, '/', BAMid, '.type.', allele, '.bam' , " FILTER=includeReadList READ_LIST_FILE=", regionDir, "/", BAMid, '.', allele, ".passed.reads.txt", ' OUTPUT=', regionDir, '/', BAMid, '.type.', allele, '.filtered.bam', sep = '')
       write.table(extractCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
       system(extractCMD)
 
