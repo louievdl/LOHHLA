@@ -12,6 +12,8 @@ option_list = list(
               help="patient ID", metavar="character"),
   make_option(c("-o", "--outputDir"), type="character", default=NULL, 
               help="location of output directory", metavar="character"),
+  make_option(c("--genomeAssembly"), type="character", default='hg19',
+              help="specify genome assembly (hg19 or grch38) [default= %default]", metavar="character"),
   make_option(c("--normalAlignedReads"), type="numeric", default=100000000,
               help="estimated number of unique reads in normal sample [default= %default]", metavar="character"),
   make_option(c("--tumorAlignedReads"), type="numeric", default=100000000,
@@ -75,6 +77,7 @@ print(opt)
 
 full.patient      <- opt$patientId
 workDir           <- opt$outputDir
+genomeAssembly    <- opt$genomeAssembly
 tumorBAMfile      <- opt$tumorBAMfile
 normalBAMfile     <- opt$normalBAMfile
 BAMDir            <- opt$BAMDir
@@ -103,6 +106,26 @@ if (is.null(opt$BAMDir) | is.null(opt$outputDir) | is.null(opt$hlaPath) | is.nul
   print_help(opt_parser)
   stop("Missing arguments.\n", call.=FALSE)  
 }
+
+if (! genomeAssembly %in% c('hg19', 'grch38')){
+  print_help(opt_parser)
+  stop("Genome build not specified (hg19 or grch38)\n", call.=FALSE)
+} else if (genomeAssembly == 'hg19'){
+  hla_main_chrom <- '6:26909037-34324964' # 3Mb upstream of hla-A to 3Mb downstream of hla-B
+  hla_a_coords <- '6:29909037-29913661'
+  hla_b_coords <- '6:31321649-31324964'
+  hla_c_coords <- '6:31236526-31239869'
+} else if (genomeAssembly == 'hg38'){
+  hla_main_chrom <- '6:26941260-34357187'
+  hla_a_coords <- '6:29941260-29945884'
+  hla_b_coords <- '6:31353872-31357187'
+  hla_c_coords <- '6:31268749-31272092'
+}
+
+# do chroms have 'chr' prefixes?
+samtoolsCMD <- paste("samtools view -H ", tumorBAMfile, " | grep -c .SQ.SN.chr",sep="")
+numChrPrefixes <- as.numeric(system(samtoolsCMD, intern=T))
+chr_prefix <- if (numChrPrefixes > 10) "chr" else ""
 
 
 
@@ -251,7 +274,7 @@ get.partially.matching.reads <- function(workDir, regionDir, BAMDir, BAMfile){
   system(cmd)
 
   # fish partially matching reads
-  cmd <- paste('samtools view ', BAMDir, '/', BAMfile, ' | grep -F -f ', kmerFile, ' >> ', regionDir, '/fished.sam', sep = '')
+  cmd <- paste('samtools view ', BAMDir, '/', BAMfile, ' ', chr_prefix, hla_main_chrom, ' | grep -F -f ', kmerFile, ' >> ', regionDir, '/fished.sam', sep = '')
   system(cmd)
 
   # convert to fastq
@@ -602,20 +625,21 @@ if(mapping.step){
     #extract HLA possible reads from BAM file
     write.table(paste('\nextract HLA possible reads from BAM file at ', date(), '\n', sep = ''), file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
 
-    # chr 6 and contigs
+    # chr 6, not contigs
+
     samtoolsCMD <- paste("samtools view -H ", BAMDir, '/', BAMfile, " > " , regionDir,"/",BAMid,".chr6region.sam",sep="")
     write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
     system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6:29909037-29913661 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " ", chr_prefix, hla_a_coords, " >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
     write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
     system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6:31321649-31324964 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " ", chr_prefix, hla_b_coords, " >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
     write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
     system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6:31236526-31239869 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " ", chr_prefix, hla_c_coords, " >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
     write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
     system(samtoolsCMD)
 
@@ -629,33 +653,33 @@ if(mapping.step){
     # write.table(paste(samtoolsCMD, '\n', sep = ''), file = log.name, row.names=FALSE, col.names=FALSE, quote=FALSE, append = TRUE)
     # system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_apd_hap1 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
-    write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
-    system(samtoolsCMD)
+    #samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_apd_hap1 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    #write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+    #system(samtoolsCMD)
 
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_cox_hap2 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
-    write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
-    system(samtoolsCMD)
+    #samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_cox_hap2 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    #write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+    #system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_dbb_hap3 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
-    write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
-    system(samtoolsCMD)
+    #samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_dbb_hap3 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    #write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+    #system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_mann_hap4 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
-    write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
-    system(samtoolsCMD)
+    #samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_mann_hap4 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    #write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+    #system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_mcf_hap5 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
-    write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
-    system(samtoolsCMD)
+    #samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_mcf_hap5 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    #write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+    #system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_qbl_hap6 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
-    write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
-    system(samtoolsCMD)
+    #samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_qbl_hap6 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    #write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+    #system(samtoolsCMD)
     
-    samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_ssto_hap7 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
-    write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
-    system(samtoolsCMD)
+    #samtoolsCMD <- paste("samtools view ", BAMDir, '/', BAMfile, " chr6_ssto_hap7 >> ",regionDir,"/",BAMid,".chr6region.sam",sep="")
+    #write.table(samtoolsCMD, file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+    #system(samtoolsCMD)
     
     # turn into fastq -- this step has an error with unpaired mates, but seems to work ok just the same (VALIDATION_STRINGENCY=SILENT)
     write.table(paste('\nturn into fastq at ', date(), '\n', sep = ''), file = log.name, quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
