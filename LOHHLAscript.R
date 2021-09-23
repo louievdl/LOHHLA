@@ -2107,6 +2107,12 @@ if(performIntegerCopyNum)
 if(cleanUp)
 {
 
+  cmd <- paste('rm ', workDir, '/', '*tumour*', sep = '')
+  system(cmd)
+
+  cmd <- paste('rm ', workDir, '/', '*control*', sep = '')
+  system(cmd)
+
   cmd <- paste('rm ', workDir, '/', '*tumor*', sep = '')
   system(cmd)
 
