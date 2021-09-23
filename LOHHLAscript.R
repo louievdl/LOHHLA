@@ -12,8 +12,14 @@ option_list = list(
               help="patient ID", metavar="character"),
   make_option(c("-o", "--outputDir"), type="character", default=NULL, 
               help="location of output directory", metavar="character"),
-  make_option(c("-n", "--normalBAMfile"), type="character", default=NULL, 
+  make_option(c("--normalAlignedReads"), type="numeric", default=100000000,
+              help="estimated number of unique reads in normal sample [default= %default]", metavar="character"),
+  make_option(c("--tumorAlignedReads"), type="numeric", default=100000000,
+              help="estimated number of unique reads in tumor sample [default= %default]", metavar="character"),
+  make_option(c("--normalBAMfile"), type="character", default=NULL, 
               help="normal BAM file\n\t\tcan be FALSE to run without normal sample", metavar="character"),
+  make_option(c("--tumorBAMfile"), type="character", default=NULL, 
+              help="tumor BAM file", metavar="character"),
   make_option(c("-b", "--BAMDir"), type="character", default=NULL, 
               help="location of all BAMs to test", metavar="character"),
   make_option(c("-a", "--hlaPath"), type="character", default=NULL, 
@@ -22,8 +28,8 @@ option_list = list(
               help="location of HLA FASTA [default= %default]", metavar="character"),
   make_option(c("-c", "--CopyNumLoc"), type="character", default="FALSE", 
               help="location to patient purity and ploidy output\n\t\tcan be FALSE to only estimate allelic imbalance", metavar="character"),
-  make_option(c("-v", "--overrideDir"), type="character", default='FALSE', 
-              help="location of flagstat information if already run [default= %default]", metavar="character"),
+#  make_option(c("-v", "--overrideDir"), type="character", default='FALSE', 
+#              help="location of flagstat information if already run [default= %default]", metavar="character"),
   make_option(c("-m", "--minCoverageFilter"), type="numeric", default=30,
               help="minimum coverage at mismatch site [default= %default]", metavar="character"),
   make_option(c("-k", "--kmerSize"), type="numeric", default=50, 
@@ -69,12 +75,13 @@ print(opt)
 
 full.patient      <- opt$patientId
 workDir           <- opt$outputDir
+tumorBAMfile      <- opt$tumorBAMfile
 normalBAMfile     <- opt$normalBAMfile
 BAMDir            <- opt$BAMDir
 hlaPath           <- opt$hlaPath
 HLAfastaLoc       <- opt$HLAfastaLoc
 CopyNumLoc        <- opt$CopyNumLoc
-overrideDir       <- opt$overrideDir
+#overrideDir       <- workDir # opt$overrideDir
 minCoverageFilter <- opt$minCoverageFilter
 numMisMatch       <- opt$numMisMatch
 mapping.step      <- opt$mappingStep
@@ -87,7 +94,8 @@ fishing.step      <- opt$fishingStep
 coverageStep      <- opt$coverageStep
 plottingStep      <- opt$plottingStep
 ignoreWarnings    <- opt$ignoreWarnings
-
+tumorAlignedReads <- opt$tumorAlignedReads
+normalAlignedReads <- opt$normalAlignedReads
 #print(coverageStep)
 #print(plottingStep)
 
@@ -128,7 +136,7 @@ if(interactive)
                                , '--CopyNumLoc', '/camp/lab/swantonc/working/mcgrann/projects/LOHproject/kidney_run/G_K107/copyNumSolutions.txt'
                                , '--mappingStep', 'TRUE'
                                , '--cleanUp', 'TRUE'
-                               , '--overrideDir', '/camp/lab/swantonc/working/mcgrann/projects/LOHproject/kidney_run/G_K107/flagstat/'
+                               #, '--overrideDir', '/camp/lab/swantonc/working/mcgrann/projects/LOHproject/kidney_run/G_K107/flagstat/'
                                , '--gatkDir', '/camp/apps/eb/software/TracerX-Picard-GATK/0.1-Java-1.7.0_80/bin/'
                                , '--novoDir', '/camp/apps/eb/software/novoalign/3.07.00/bin/'))
 
@@ -141,7 +149,7 @@ if(interactive)
                                , '--CopyNumLoc', '/camp/lab/swantonc/working/rosentr/projects/PolySolverLOH/test/test-renal/G_K107-v2/copyNumSolutions.txt'
                                , '--mappingStep', 'TRUE'
                                , '--cleanUp', 'TRUE'
-                               , '--overrideDir', '/camp/lab/swantonc/working/rosentr/projects/PolySolverLOH/test/test-renal/G_K107-v2/flagstat/'
+                               #, '--overrideDir', '/camp/lab/swantonc/working/rosentr/projects/PolySolverLOH/test/test-renal/G_K107-v2/flagstat/'
                                , '--gatkDir', '/camp/apps/eb/software/TracerX-Picard-GATK/0.1-Java-1.7.0_80/bin/'
                                , '--novoDir', '/camp/apps/eb/software/novoalign/3.07.00/bin/'))
   
@@ -170,7 +178,7 @@ if(CopyNumLoc == 'FALSE'){
   useLogRbin            <- FALSE
 }
 
-override <-  ifelse(overrideDir == FALSE, yes = FALSE, no = TRUE)
+#override <-  T # to keep from breaking things, overrideDir is workDir # ifelse(overrideDir == FALSE, yes = FALSE, no = TRUE)
 
 gamma                   <- 1
 binSize                 <- 150
@@ -438,6 +446,16 @@ getUniqMapReads <- function(workDir
   
   return(UniqMapReads)
   
+}
+
+getUniqMapReadsEstd <- function()
+{
+  UniqMapReads <- list()
+
+  UniqMapReads[[unlist(strsplit(basename(tumorBAMfile),split="\\."))[1]]] <- tumorAlignedReads # assume only one dot in the filename
+  UniqMapReads[[unlist(strsplit(basename(normalBAMfile),split="\\."))[1]]] <- normalAlignedReads
+  
+  return(UniqMapReads)
 }
 
 funCalcN_withBAF <- function(logRSites,bafSites,tumorPloidy,tumorPurity,gamma)
@@ -768,12 +786,13 @@ if(runWithNormal){
 
   normalName <- regions[which(paste(BAMDir, '/', regions, '.bam', sep = '') == normalBAMfile)]
   
-  if(!override){
-    regionUniqMappedRegions <- getUniqMapReads(workDir = workDir, BAMDir = BAMDir, override = FALSE)
-  }
-  if(override){
-    regionUniqMappedRegions <- getUniqMapReads(workDir = workDir, BAMDir = BAMDir, override = TRUE, overrideDir = overrideDir) 
-  }
+  #if(!override){
+  #  regionUniqMappedRegions <- getUniqMapReads(workDir = workDir, BAMDir = BAMDir, override = FALSE)
+  #}
+  #if(override){
+  #  regionUniqMappedRegions <- getUniqMapReads(workDir = workDir, BAMDir = BAMDir, override = TRUE, overrideDir = overrideDir) 
+  #}
+  regionUniqMappedRegions <- getUniqMapReadsEstd()
 
   # this will need to change if normal BAM doesn't have GL in name
   #GermLineUniqMappedReads <- regionUniqMappedRegions[[grep("GL",names(regionUniqMappedRegions),value=TRUE)]]
